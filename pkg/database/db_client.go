@@ -14,18 +14,17 @@ const (
 	versionInsert = "INSERT INTO queries (id, query) VALUES (?, ?)"
 )
 
-func Init() *sql.DB {
-	log.Println("Initializing database...")
+func Init() (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	log.Println("Database initialized")
 	err = runQueries(db)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
-	return db
+	return db, nil
 }
 
 func runQueries(db *sql.DB) error {
@@ -35,10 +34,12 @@ func runQueries(db *sql.DB) error {
 		count = 0
 	}
 
-	if count != len(queries) {
-		log.Println("Updating database...")
+	if count == len(queries) {
+		log.Println("Database is up to date")
+		return nil
 	}
 
+	log.Println("Updating database...")
 	for i := count; i < len(queries); i++ {
 		query := strings.ReplaceAll(queries[i], "\n", "")
 		query = strings.Join(strings.Fields(query), " ")

@@ -36,26 +36,6 @@ func getHelixOptionsUser() (*helix.Options, error) {
 	return &helixOptions, nil
 }
 
-func getHelixOptionsApp() (*helix.Options, error) {
-	var helixOptions helix.Options
-	val, ok := os.LookupEnv("TWITCH_CLIENT_ID")
-	if !ok || val == "" {
-		return nil, fmt.Errorf("TWITCH_CLIENT_ID not set")
-	}
-	helixOptions.ClientID = val
-	val, ok = os.LookupEnv("TWITCH_CLIENT_SECRET")
-	if !ok || val == "" {
-		return nil, fmt.Errorf("TWITCH_CLIENT_SECRET not set")
-	}
-	helixOptions.ClientSecret = val
-	val, ok = os.LookupEnv("TWITCH_APP_ACCESS_TOKEN")
-	if !ok || val == "" {
-		return nil, fmt.Errorf("TWITCH_APP_ACCESS_TOKEN not set")
-	}
-	helixOptions.AppAccessToken = val
-	return &helixOptions, nil
-}
-
 func getHelixOptions() (*helix.Options, error) {
 	var helixOptions helix.Options
 	val, ok := os.LookupEnv("TWITCH_CLIENT_ID")
@@ -71,10 +51,21 @@ func getHelixOptions() (*helix.Options, error) {
 	return &helixOptions, nil
 }
 
-func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
-	log.Println("Establishing Twitch connection...")
 
-	log.Println("Fetching helix options...")
+func (tc *TwitchConn) Disconnect() {
+	token := tc.UserClient.GetUserAccessToken()
+	_, err := tc.UserClient.RevokeUserAccessToken(token)
+	if err != nil {
+		log.Println(err)
+	} else {
+		log.Println("Sent revoke user token request")
+	}
+	log.Println("Disconnected from Twitch")
+}
+
+func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
+	log.Println("Establishing Twitch connection")
+
 	helixOptionsUser, err := getHelixOptionsUser()
 	if err != nil {
 		return nil, err
@@ -84,15 +75,18 @@ func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Helix options fetched")
 
-	log.Println("Creating clients...")
+	log.Println("Helix options fetched")
 
 	userClient, err := createUserClient(helixOptionsUser)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("User client created")
+	log.Println("Fetched new user access token")
+
+	userClient.OnUserAccessTokenRefreshed(func(_, _ string) {
+		log.Println("")
+	})
 
 	appClient, err := createAppClient(helixOptionsApp)
 	if err != nil {
@@ -108,7 +102,6 @@ func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 
 	log.Println("Twitch connection established")
 
-	log.Println("Fetching broadcaster...")
 	userLogin, ok := os.LookupEnv("TWITCH_USER_NAME")
 	if !ok || userLogin == "" {
 		return nil, fmt.Errorf("TWITCH_USER_NAME not set")
@@ -117,7 +110,7 @@ func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("User fetched [%s, %s, %s]\n", broadcaster.Login, broadcaster.DisplayName, broadcaster.ID)
+	log.Printf("User set to [%s, %s]\n", broadcaster.DisplayName, broadcaster.ID)
 
 	return &TwitchConn{UserClient: userClient, AppClient: appClient, Broadcaster: broadcaster}, nil
 }
@@ -163,14 +156,12 @@ func getBroadcaster(client *helix.Client, login string) (*helix.User, error) {
 }
 
 func getAppAccessToken(client *helix.Client, db *sql.DB) (string, error) {
-	log.Println("Checking stored access token...")
 	accessToken, err := database.GetToken(db, "app")
 	if err == nil && accessToken != "" {
-		log.Println("Access token found")
+		log.Println("Using stored app access token")
 		return accessToken, nil
 	}
 
-	log.Println("Fetching access token...")
 	accessToken, err = fetchNewAccessToken(client)
 	if err != nil {
 		return "", err
@@ -179,7 +170,7 @@ func getAppAccessToken(client *helix.Client, db *sql.DB) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Println("Access token fetched")
+	log.Println("Fetched new app access token")
 	return accessToken, nil
 
 }

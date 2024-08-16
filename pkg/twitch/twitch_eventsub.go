@@ -7,7 +7,7 @@ import (
 )
 
 func (c *TwitchConn) SubscribeToCustomRewards() {
-	log.Println("Subscribing to custom rewards...")
+	log.Println("Subscribing to custom rewards")
 	res, err := c.AppClient.CreateEventSubSubscription(&helix.EventSubSubscription{
 		Type:    helix.EventSubTypeChannelPointsCustomRewardRedemptionAdd,
 		Version: "1",

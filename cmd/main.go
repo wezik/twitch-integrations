@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
 	"os"
 	"os/signal"
@@ -12,28 +12,37 @@ import (
 )
 
 func main() {
-	log.Println("Starting...")
-	log.Println("Loading .env file without overriding existing variables...")
+	log.Println("Starting twitch integration service")
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println(err)
+	} else {
+		log.Println("Loaded environment")
 	}
 
-	db := database.Init()
+	db, err := database.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func(db *sql.DB) {
+		if err := db.Close(); err != nil {
+			log.Println(err)
+		} else {
+			log.Println("Database closed")
+		}
+	}(db)
 
 	twitchConn, err := twitch.GetTwitchConnection(db)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer twitchConn.Disconnect()
 
 	twitchConn.SubscribeToCustomRewards()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
 	<-quit
-
-	fmt.Println()
 	log.Println("Shutting down...")
-	log.Println("Invalidating user access token...")
-	token := twitchConn.UserClient.GetUserAccessToken()
-	twitchConn.UserClient.RevokeUserAccessToken(token)
 }
