@@ -35,7 +35,7 @@ func main() {
 		log.Printf("Custom reward: %s/%s", emote.ID, emote.Title)
 	}
 
-	resp, err := twitchConn.AppClient.CreateEventSubSubscription(&helix.EventSubSubscription{
+	_, err = twitchConn.AppClient.CreateEventSubSubscription(&helix.EventSubSubscription{
 		Type:    helix.EventSubTypeChannelPointsCustomRewardRedemptionAdd,
 		Version: "1",
 		Condition: helix.EventSubCondition{
@@ -52,32 +52,17 @@ func main() {
 		log.Println(err)
 	}
 
-	log.Printf("%+v\n", resp)
-
-	// reader := bufio.NewReader(os.Stdin)
-	// for {
-	// 	// read input and pass to chat
-	// 	message, err := reader.ReadString('\n')
-	// 	message = strings.TrimSuffix(message, "\n")
-	//
-	// 	if err != nil {
-	// 		log.Println("Error reading message")
-	// 		continue
-	// 	}
-	//
-	// 	response := sendMessageToChat(twitchConn, message)
-	// 	if response.StatusCode != 200 {
-	// 		log.Println("Error sending message")
-	// 	} else {
-	// 		log.Printf("Message sent, rate limit: %v/%v\n", response.GetRateLimitRemaining(), response.GetRateLimit())
-	// 	}
-	// }
+	// log.Printf("%+v\n", resp)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	fmt.Println(" Shutting down...")
+	fmt.Println()
+	log.Println("Shutting down...")
+	log.Println("Invalidating user access token...")
+	token := twitchConn.UserClient.GetUserAccessToken()
+	twitchConn.UserClient.RevokeUserAccessToken(token)
 }
 
 type eventSubNotification struct {

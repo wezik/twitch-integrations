@@ -55,9 +55,9 @@ func getHelixOptionsApp() (*helix.Options, error) {
 }
 
 func GetTwitchConnection() (*TwitchConn, error) {
-	log.Println("Establishing Twitch connection")
+	log.Println("Establishing Twitch connection...")
 
-	log.Println("Fetching helix options")
+	log.Println("Fetching helix options...")
 	helixOptionsUser, err := getHelixOptionsUser()
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func GetTwitchConnection() (*TwitchConn, error) {
 	}
 	log.Println("Helix options fetched")
 
-	log.Println("Creating clients")
+	log.Println("Creating clients...")
 
 	userClient, err := createUserClient(helixOptionsUser)
 	if err != nil {
@@ -83,6 +83,7 @@ func GetTwitchConnection() (*TwitchConn, error) {
 	}
 	log.Println("App client created")
 
+	log.Println("Fetching broadcaster...")
 	userLogin, ok := os.LookupEnv("TWITCH_USER_NAME")
 	if !ok || userLogin == "" {
 		return nil, fmt.Errorf("TWITCH_USER_NAME not set")
@@ -91,7 +92,7 @@ func GetTwitchConnection() (*TwitchConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("User %s, %s, %s fetched\n", broadcaster.Login, broadcaster.DisplayName, broadcaster.ID)
+	log.Printf("User fetched [%s, %s, %s]\n", broadcaster.Login, broadcaster.DisplayName, broadcaster.ID)
 
 	log.Println("Twitch connection established")
 	return &TwitchConn{UserClient: userClient, AppClient: appClient, Broadcaster: broadcaster}, nil
@@ -119,7 +120,6 @@ func createAppClient(helixOptions *helix.Options) (*helix.Client, error) {
 }
 
 func getBroadcaster(client *helix.Client, login string) (*helix.User, error) {
-	log.Printf("Fetching user %s\n", login)
 	if user, ok := channelsCache[login]; ok {
 		return user, nil
 	}
