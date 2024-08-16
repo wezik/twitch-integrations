@@ -82,6 +82,7 @@ func GetTwitchConnection() (*TwitchConn, error) {
 		return nil, err
 	}
 	log.Println("App client created")
+	log.Println("Twitch connection established")
 
 	log.Println("Fetching broadcaster...")
 	userLogin, ok := os.LookupEnv("TWITCH_USER_NAME")
@@ -94,7 +95,6 @@ func GetTwitchConnection() (*TwitchConn, error) {
 	}
 	log.Printf("User fetched [%s, %s, %s]\n", broadcaster.Login, broadcaster.DisplayName, broadcaster.ID)
 
-	log.Println("Twitch connection established")
 	return &TwitchConn{UserClient: userClient, AppClient: appClient, Broadcaster: broadcaster}, nil
 }
 
