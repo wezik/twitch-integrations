@@ -10,7 +10,7 @@ func GetToken(db *sql.DB, tokenType string) (string, error) {
 }
 
 func SetToken(db *sql.DB, tokenType string, token string) error {
-	sql := "INSERT INTO tokens (id, token) VALUES (?, ?)"
-	_, err := db.Exec(sql, tokenType, token)
+	sql := "INSERT INTO tokens (id, token) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET token = ?"
+	_, err := db.Exec(sql, tokenType, token, token)
 	return err
 }
