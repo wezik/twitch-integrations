@@ -13,7 +13,7 @@ type TwitchConn struct {
 	ChannelID string
 }
 
-func getHelixOptions() (*helix.Options, error) {
+func getHelixOptionsUser() (*helix.Options, error) {
 	var helixOptions helix.Options
 	val, ok := os.LookupEnv("TWITCH_CLIENT_ID")
 	if !ok || val == "" {
@@ -38,30 +38,59 @@ func getHelixOptions() (*helix.Options, error) {
 	return &helixOptions, nil
 }
 
-func GetTwitchConnection() (*TwitchConn, error) {
+func getHelixOptionsApp() (*helix.Options, error) {
+	var helixOptions helix.Options
+	val, ok := os.LookupEnv("TWITCH_CLIENT_ID")
+	if !ok || val == "" {
+		return nil, fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	helixOptions.ClientID = val
+	val, ok = os.LookupEnv("TWITCH_CLIENT_SECRET")
+	if !ok || val == "" {
+		return nil, fmt.Errorf("TWITCH_CLIENT_SECRET not set")
+	}
+	helixOptions.ClientSecret = val
+	val, ok = os.LookupEnv("TWITCH_APP_ACCESS_TOKEN")
+	if !ok || val == "" {
+		return nil, fmt.Errorf("TWITCH_APP_ACCESS_TOKEN not set")
+	}
+	helixOptions.AppAccessToken = val
+	return &helixOptions, nil
+}
+
+func GetTwitchConnection() (*TwitchConn, *TwitchConn, error) {
 	userLogin, ok := os.LookupEnv("TWITCH_USER_NAME")
 	if !ok || userLogin == "" {
-		return nil, fmt.Errorf("TWITCH_USER_NAME not set")
+		return nil, nil, fmt.Errorf("TWITCH_USER_NAME not set")
 	}
-	helixOptions, err := getHelixOptions()
+	helixOptionsUser, err := getHelixOptionsUser()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	client, err := helix.NewClient(helixOptions)
+	clientUser, err := helix.NewClient(helixOptionsUser)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	log.Println("Client created")
-	client.OnUserAccessTokenRefreshed(func(_, _ string) {
+	clientUser.OnUserAccessTokenRefreshed(func(_, _ string) {
 		log.Println("Token refreshed")
 	})
-	channelID, err := GetChannelID(client, userLogin)
+	channelID, err := GetChannelID(clientUser, userLogin)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	log.Printf("User %s found with channel ID %s\n", userLogin, channelID)
+	helixOptionsApp, err := getHelixOptionsApp()
+	if err != nil {
+		return nil, nil, err
+	}
+	clientApp, err := helix.NewClient(helixOptionsApp)
+	if err != nil {
+		return nil, nil, err
+	}
+	log.Println("Client created")
 	log.Println("Twitch connection established")
-	return &TwitchConn{Client: client, ChannelID: channelID}, nil
+	return &TwitchConn{Client: clientUser, ChannelID: channelID}, &TwitchConn{Client: clientApp, ChannelID: channelID}, nil
 }
 
 var channelsCache = map[string]string{
