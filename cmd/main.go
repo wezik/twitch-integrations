@@ -20,15 +20,13 @@ func main() {
 		panic(err)
 	}
 
-	twitchConnUser, twitchConnApp, err := twitch.GetTwitchConnection()
+	twitchConn, err := twitch.GetTwitchConnection()
 	if err != nil {
 		panic(err)
 	}
 
-	//----
-
-	params := helix.GetCustomRewardsParams{BroadcasterID: twitchConnUser.ChannelID}
-	response, err := twitchConnUser.Client.GetCustomRewards(&params)
+	params := helix.GetCustomRewardsParams{BroadcasterID: twitchConn.Broadcaster.ID}
+	response, err := twitchConn.AppClient.GetCustomRewards(&params)
 
 	if err != nil {
 		log.Println(err)
@@ -37,28 +35,24 @@ func main() {
 		log.Printf("Custom reward: %s/%s", emote.ID, emote.Title)
 	}
 
-	//----
-
-	resp, err := twitchConnApp.Client.CreateEventSubSubscription(&helix.EventSubSubscription{
-		Type: helix.EventSubTypeChannelPointsCustomRewardRedemptionAdd,
+	resp, err := twitchConn.AppClient.CreateEventSubSubscription(&helix.EventSubSubscription{
+		Type:    helix.EventSubTypeChannelPointsCustomRewardRedemptionAdd,
 		Version: "1",
 		Condition: helix.EventSubCondition{
-			BroadcasterUserID: twitchConnApp.ChannelID,
-			UserID: twitchConnApp.ChannelID,
+			BroadcasterUserID: twitchConn.Broadcaster.ID,
+			UserID:            twitchConn.Broadcaster.ID,
 		},
 		Transport: helix.EventSubTransport{
-			Method: "webhook",
+			Method:   "webhook",
 			Callback: "https://localhost:443/eventsub",
-			Secret: "1234567890",
+			Secret:   "1234567890",
 		},
-
 	})
 	if err != nil {
 		log.Println(err)
 	}
 
 	log.Printf("%+v\n", resp)
-
 
 	// reader := bufio.NewReader(os.Stdin)
 	// for {
@@ -133,13 +127,13 @@ func eventSubMessage(w http.ResponseWriter, r *http.Request) {
 
 func sendMessageToChat(tConn *twitch.TwitchConn, message string) helix.ResponseCommon {
 	params := helix.SendChatMessageParams{
-		BroadcasterID: tConn.ChannelID,
-		SenderID:      tConn.ChannelID,
+		BroadcasterID: tConn.Broadcaster.ID,
+		SenderID:      tConn.Broadcaster.ID,
 		Message:       message,
 	}
 
 	log.Printf("Sending chat message to %s room: %s\n", params.BroadcasterID, params.Message)
-	response, err := tConn.Client.SendChatMessage(&params)
+	response, err := tConn.UserClient.SendChatMessage(&params)
 	if err != nil {
 		log.Println(err)
 	}
