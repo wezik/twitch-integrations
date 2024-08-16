@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"com.yapdap/pkg/database"
 	"com.yapdap/pkg/twitch"
 	"github.com/joho/godotenv"
 )
@@ -17,7 +18,9 @@ func main() {
 		log.Println(err)
 	}
 
-	twitchConn, err := twitch.GetTwitchConnection()
+	db := database.Init()
+
+	twitchConn, err := twitch.GetTwitchConnection(db)
 	if err != nil {
 		log.Fatal(err)
 	}

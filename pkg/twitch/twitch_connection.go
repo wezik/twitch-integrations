@@ -1,10 +1,12 @@
 package twitch
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
+	"com.yapdap/pkg/database"
 	"github.com/nicklaw5/helix/v2"
 )
 
@@ -54,7 +56,22 @@ func getHelixOptionsApp() (*helix.Options, error) {
 	return &helixOptions, nil
 }
 
-func GetTwitchConnection() (*TwitchConn, error) {
+func getHelixOptions() (*helix.Options, error) {
+	var helixOptions helix.Options
+	val, ok := os.LookupEnv("TWITCH_CLIENT_ID")
+	if !ok || val == "" {
+		return nil, fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	helixOptions.ClientID = val
+	val, ok = os.LookupEnv("TWITCH_CLIENT_SECRET")
+	if !ok || val == "" {
+		return nil, fmt.Errorf("TWITCH_CLIENT_SECRET not set")
+	}
+	helixOptions.ClientSecret = val
+	return &helixOptions, nil
+}
+
+func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 	log.Println("Establishing Twitch connection...")
 
 	log.Println("Fetching helix options...")
@@ -63,7 +80,7 @@ func GetTwitchConnection() (*TwitchConn, error) {
 		return nil, err
 	}
 
-	helixOptionsApp, err := getHelixOptionsApp()
+	helixOptionsApp, err := getHelixOptions()
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +99,13 @@ func GetTwitchConnection() (*TwitchConn, error) {
 		return nil, err
 	}
 	log.Println("App client created")
+
+	accessToken, err := getAppAccessToken(appClient, db)
+	if err != nil {
+		return nil, err
+	}
+	appClient.SetAppAccessToken(accessToken)
+
 	log.Println("Twitch connection established")
 
 	log.Println("Fetching broadcaster...")
@@ -136,4 +160,26 @@ func getBroadcaster(client *helix.Client, login string) (*helix.User, error) {
 		}
 	}
 	return nil, fmt.Errorf("User not found")
+}
+
+func getAppAccessToken(client *helix.Client, db *sql.DB) (string, error) {
+	log.Println("Checking stored access token...")
+	accessToken, err := database.GetToken(db, "app")
+	if err == nil && accessToken != "" {
+		log.Println("Access token found")
+		return accessToken, nil
+	}
+
+	log.Println("Fetching access token...")
+	accessToken, err = fetchNewAccessToken(client)
+	if err != nil {
+		return "", err
+	}
+	err = database.SetToken(db, "app", accessToken)
+	if err != nil {
+		return "", err
+	}
+	log.Println("Access token fetched")
+	return accessToken, nil
+
 }
