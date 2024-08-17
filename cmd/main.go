@@ -12,28 +12,28 @@ import (
 )
 
 func main() {
-	log.Println("Starting twitch integration service")
-
+	log.Println("Starting yapdap twitch-obs integration")
+	
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println(err)
 	} else {
-		log.Println("Loaded environment")
+		log.Println("Loaded .env")
 	}
 
 	db, err := database.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func(db *sql.DB) {
+	defer func() {
 		if err := db.Close(); err != nil {
 			log.Println(err)
 		} else {
 			log.Println("Database closed")
 		}
-	}(db)
+	}()
 
 	twitchConn, err := twitch.GetTwitchConnection(db)
 	if err != nil {
@@ -44,5 +44,8 @@ func main() {
 	twitchConn.SubscribeToCustomRewards()
 
 	<-quit
-	log.Println("Shutting down...")
+}
+
+func onQuit() {
+
 }

@@ -38,6 +38,34 @@ func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 
 	log.Println("Helix options fetched")
 
+	userReq := UserTokensRequest{
+		ClientID: helixOptionsUser.ClientID,
+		ClientSecret: helixOptionsUser.ClientSecret,
+		RedirectURI: "http://localhost:3030/userauth",
+		DB: db,
+	}
+
+	userToken, refreshToken, err := GetUserTokens(userReq)
+	if err != nil {
+		return nil, err
+	}
+
+	helixOptionsUser.UserAccessToken = userToken
+	helixOptionsUser.RefreshToken = refreshToken
+
+	appReq := AppTokenRequest{
+		ClientID: helixOptionsApp.ClientID,
+		ClientSecret: helixOptionsApp.ClientSecret,
+		DB: db,
+	}
+
+	appToken, err := GetAppToken(appReq)
+	if err != nil {
+		return nil, err
+	}
+
+	helixOptionsApp.AppAccessToken = appToken
+
 	// User client
 
 	userClient, err := helix.NewClient(helixOptionsUser)
@@ -50,12 +78,6 @@ func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 		log.Println("User token renewed")
 	})
 
-	refreshToken, err := getRefreshToken(userClient, db)
-	if err != nil {
-		return nil, err
-	}
-	userClient.SetRefreshToken(refreshToken)
-
 	// App client
 
 	appClient, err := helix.NewClient(helixOptionsApp)
@@ -63,12 +85,6 @@ func GetTwitchConnection(db *sql.DB) (*TwitchConn, error) {
 		return nil, err
 	}
 	log.Println("App client created")
-
-	accessToken, err := getAppToken(appClient, db)
-	if err != nil {
-		return nil, err
-	}
-	appClient.SetAppAccessToken(accessToken)
 
 	// Broadcaster fetch
 
