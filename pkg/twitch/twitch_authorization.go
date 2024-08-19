@@ -7,13 +7,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os/exec"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"com.yapdap/pkg/database"
+	"github.com/pkg/browser"
 )
 
 const oAuthURL = "https://id.twitch.tv/oauth2/authorize"
@@ -106,9 +105,9 @@ func GetUserTokens(r UserTokensRequest) (string, string, error) {
 	}
 
 	oAuthURL := createOAuthURL(oAuthURLRequest)
-
-	log.Println("Opening browser to authorize user at " + oAuthURL)
-	err = openURL(oAuthURL)
+	
+	log.Println("Opening browser if it doesn't work, just head to the following url: " + oAuthURL)
+	err = browser.OpenURL(oAuthURL)
 	if err != nil {
 		panic(err)
 	}
@@ -119,7 +118,7 @@ func GetUserTokens(r UserTokensRequest) (string, string, error) {
 		ClientID: r.ClientID,
 		ClientSecret: r.ClientSecret,
 		RedirectURI: r.RedirectURI,
-		Code: code, // TODO: Get the code from the callback
+		Code: code,
 	}
 
 	res, err := authUser(authRequest)
@@ -134,24 +133,6 @@ func GetUserTokens(r UserTokensRequest) (string, string, error) {
 	log.Println("User authorization renewed")
 
 	return res.AccessToken, res.RefreshToken, nil
-}
-
-func openURL(url string) error {
-	var cmd string
-	var args []string
-
-	switch runtime.GOOS {
-	case "windows":
-		cmd = "cmd"
-		args = []string{"/c", "start"}
-	case "darwin":
-		cmd = "open"
-	default: // "linux", "freebsd", "openbsd", "netbsd"
-		cmd = "xdg-open"
-	}
-
-	args = append(args, url)
-	return exec.Command(cmd, args...).Start()
 }
 
 func waitForCallback(redirectURI string) (string, error) {
